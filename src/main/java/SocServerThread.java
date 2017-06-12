@@ -1,29 +1,30 @@
-import java.io.BufferedReader;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.Socket;
 
 /**
  * Created by kushalkanavi on 6/9/17.
  */
 public class SocServerThread implements Runnable {
-    private Socket cliSocket;
-    private String keyString;
-    SocServer socServer;
 
-    public SocServerThread(Socket cliSocket,String keyString) {
+    Socket cliSocket;
+    String key;
+
+    public SocServerThread(Socket cliSocket, String key) {
         this.cliSocket = cliSocket;
-        this.keyString = keyString;
+        this.key = key;
     }
 
     public void run() {
 
-        try {
-            System.out.println("Client Connected");
+        System.out.println("Client Connected");
 
+        try {
             DataInputStream din = new DataInputStream(cliSocket.getInputStream());
             DataOutputStream dout = new DataOutputStream(cliSocket.getOutputStream());
+
+            ChatSendDataThread st = new ChatSendDataThread(din,key);
+            Thread t = new Thread(st);
+            t.start();
 
             BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 
@@ -31,19 +32,17 @@ public class SocServerThread implements Runnable {
 
             while (!(msgin.equals("end"))) {
 
-                    msgin = din.readUTF();
-                    String decryptedString = socServer.decrypt(msgin, keyString);
-                    System.out.println("Encrypted Client Message: " + msgin);
-                    System.out.println("Client Message: " + decryptedString);
-
-                    msgout = br.readLine();
-                    String encryptedString = socServer.encrypt(msgout, keyString);
-                    dout.writeUTF(encryptedString);
-                    dout.flush();
+                msgout = br.readLine();
+                Encryption en = new Encryption(msgout,key);
+                dout.writeUTF(en.encrypt());
+                dout.flush();
             }
-            cliSocket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
         } catch (Exception e) {
-
+            e.printStackTrace();
         }
+
+
     }
 }
